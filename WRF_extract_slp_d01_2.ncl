@@ -15,8 +15,11 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 ;INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/"/)
 ;OUTDIRS=INDIRS
 
-INDIRS=("/srv/ccrc/data33/z3481416/CCRC-WRF3.6.0.5-SEB/ERA-Interim/R2_nudging/out/")
-OUTDIRS=(/"/srv/ccrc/data34/z3478332/WRF/ERA-nudge/"/)
+;INDIRS=("/srv/ccrc/data33/z3481416/CCRC-WRF3.6.0.5-SEB/ERA-Interim/R2_nudging/out/")
+;OUTDIRS=(/"/srv/ccrc/data34/z3478332/WRF/ERA-nudge/"/)
+
+INDIRS=(/"/srv/ccrc/data34/z3478332/WRF/output/ERAI_R2_nudging_notopo_19902009/out/"/)
+OUTDIRS=INDIRS+"slp/"
 
   f1=addfile("/srv/ccrc/data30/z3393020/NARCliM/postprocess/1990-2009/ECHAM5/R2/d01/CCRC_NARCliM_MON_2000-2009_tasmax.nc","r")
   lat1=f1->lat
@@ -42,7 +45,7 @@ do while(n.lt.dimsizes(INDIRS))
   INDIR=INDIRS(n)
   OUTDIR=OUTDIRS(n)
 
-  year=1990
+  year=2009
    year2=2009
 
   do while(year.le.year2)
@@ -80,36 +83,14 @@ do while(n.lt.dimsizes(INDIRS))
   slp1c&lon0 = lon0
   slp1c@description = "NCEP-driven WRF slp regridded to 0.5x0.5 regular grid"
 
-  FILES2 = systemfunc (" ls -1 " + INDIR + "wrfout_d02_"+year+"-"+sprinti("%0.2i",i)+"-??_??:00:00")
-  f4 = addfiles(FILES2+".nc","r")
-  slp2 = wrf_user_getvar(f4,"slp",-1)    ; slp
-  slp2a=slp2(0:l:2,:,:)
-  wrf_smooth_2d( slp2a, 3 )            ; smooth slp
-  slp2a@lat2d=lat2
-  slp2a@lon2d=lon2
-  slp2c = ESMF_regrid(slp2a,Opt3)   ; Do the regridding - 0.5 degrees
-  copy_VarMeta(slp1c,slp2c)
-
-  slp3 = where(ismissing(slp2c),slp1c,slp2c)
-  copy_VarMeta(slp1c,slp3)
-
    outfile=OUTDIR+"WRF_d01_slp_"+year+sprinti("%0.2i",i)
    system("/bin/rm -f "+outfile+"_regrid.nc")
    out = addfile(outfile+"_regrid.nc","c")
    out->slp0 = slp1c
    out->Times = times3
-   delete([/outfile,out/])
-
-   outfile=OUTDIR+"WRF_d02_slp_"+year+sprinti("%0.2i",i)
-   system("/bin/rm -f "+outfile+"_regrid.nc")
-   out = addfile(outfile+"_regrid.nc","c")
-   out->slp0 = slp3
-   out->Times = times3
-   delete(out)
  
-   delete([/times,times2,times3,yy,mm,dd,hh,FILES1,FILES2,f3/])
-   delete([/slp1,slp1a,slp1c/])
-   delete([/slp2,slp2a,slp2c,slp3,f4,outfile/])
+   delete([/times,times2,times3,yy,mm,dd,hh,FILES1,f3/])
+   delete([/slp1,slp1a,slp1c,outfile,out/])
 
 i=i+1
 end do

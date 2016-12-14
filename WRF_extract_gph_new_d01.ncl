@@ -11,23 +11,22 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 ;INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_2eac/out/"/)
 ;OUTDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_2eac/out/"/)
 
-INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/"/)
-OUTDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/"/)
+;INDIRS=(/"/srv/ccrc/data34/z3478332/WRF/output/ERAI_R2_nudging_notopo_19902009/out/"/)
+;OUTDIRS=INDIRS
+
+;INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/"/)
+;OUTDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/"/)
+
+INDIRS=(/"/srv/ccrc/data33/z3481416/CCRC-WRF3.6.0.5-SEB/ERA-Interim/R2_nudging/out/"/)
+OUTDIRS=(/"/srv/ccrc/data34/z3478332/WRF/ERA-nudge/"/)
 
   fin=addfile("/srv/ccrc/data13/z3393020/Analyses/share/geo_em_files/geo_em.d01.narclim.nc","r")
   lat1=rm_single_dims(wrf_user_getvar(fin,"XLAT_M",-1))
   lon1=rm_single_dims(wrf_user_getvar(fin,"XLONG_M",-1))
 
-  fin=addfile("/srv/ccrc/data13/z3393020/Analyses/share/geo_em_files/geo_em.d02.narclim.nc","r")
-  lat2=rm_single_dims(wrf_user_getvar(fin,"XLAT_M",-1))
-  lon2=rm_single_dims(wrf_user_getvar(fin,"XLONG_M",-1))
-
   levlist=fspan(300.,900.,13)
   lon0=fspan(105,180,151)
   lat0=fspan(-50,0,101)
-
-  delete(f1)
-  delete(f2)
 
   Opt3                = True
   Opt3@SrcRegional    = True             ; These are necessary
@@ -40,7 +39,8 @@ n=0
 do while(n.lt.dimsizes(INDIRS))
 ;do while(n.lt.1)
   INDIR=INDIRS(n)
-  OUTDIR=OUTDIRS(n)+"slp/"
+;  OUTDIR=OUTDIRS(n)+"slp/"
+  OUTDIR=OUTDIRS(n)
   print(INDIR)
 
   year=1990
@@ -89,7 +89,7 @@ do while(year.le.year2)
   zNew2!3 = "lon0"
   zNew2&lat0 = lat0
   zNew2&lon0 = lon0
-  zNew2@description = "NCEP-driven WRF d02 geopotential height regridded to 0.5x0.5 regular grid"
+  zNew2@description = "NCEP-driven WRF d01 geopotential height regridded to 0.5x0.5 regular grid"
 
   outfile=OUTDIR+"WRF_d01_gph_"+year+sprinti("%0.2i",i)
   system("/bin/rm -f "+outfile+"_regrid.nc")
@@ -98,43 +98,9 @@ do while(year.le.year2)
   out->Times=times3
   out->lev=levlist
 
-delete([/FILES1,f1,p,z,dim,l,out,outfile/])
-
-  ;print(year+sprinti("%0.2i",i))
-  FILES1 = systemfunc (" ls -1 " + INDIR + "wrfout_d02_"+year+"-"+sprinti("%0.2i",i)+"-??_??:00:00")
-  f1 = addfiles(FILES1+".nc","r")
-  z = wrf_user_getvar(f1,"z",-1)
-  p = wrf_user_getvar(f1,"pressure",-1)
-  dim=dimsizes(p)
-  l=dim(0)-1
-
-  zNew3 = new((/dim(0)/2,dimsizes(levlist),dim(2),dim(3)/),"float")
-
-  tt=0
-  do while(tt.lt.dimsizes(levlist))
-    zNew3(:,tt,:,:) = wrf_user_intrp3d(z(0:l:2,:,:,:),p(0:l:2,:,:,:),"h",levlist(tt),0.,False)
-    tt=tt+1
-  end do
-  wrf_smooth_2d( zNew3, 3 )            ; smooth slp
-
-  zNew3@lat2d=lat2
-  zNew3@lon2d=lon2
-  zNew4 = ESMF_regrid(zNew,Opt3)   ; Do the regridding - 0.5 degrees
-
-  zComb = where(ismissing(zNew4),zNew2,zNew4)
-  copy_VarMeta(zNew2,zComb)
-
-
-  outfile=OUTDIR+"WRF_d02_gph_"+year+sprinti("%0.2i",i)
-  system("/bin/rm -f "+outfile+"_regrid.nc")
-  out = addfile(outfile+"_regrid.nc","c")
-  out->Z=zComb
-  out->Times=times3
-  out->lev=levlist
-
    i=i+1
    delete([/FILES1,f1,times,z,p,times2,yy,mm,dd,hh,times3/])
-   delete([/out,outfile,zNew,dim,l,tt,zNew2,zNew3,zNew4,zComb/])
+   delete([/out,outfile,zNew,dim,l,tt,zNew2/])
 end do
 year=year+1
 end do

@@ -59,8 +59,8 @@ begin
   delete([/a,fin/])
 
 do while(r.le.3)
-CONTDir = "/srv/ccrc/data37/z3478332/WRF/output/ERAI_R"+r+"_nudging_default_2007_BRAN/out/"
-DATADir = "/srv/ccrc/data37/z3478332/WRF/output/ERAI_R"+r+"_nudging_default_2007_BRAN_noeac/out/"
+CONTDir = "/srv/ccrc/data36/z3478332/WRF/output/ERAI_R"+r+"_nudging_default_2007/out/"
+DATADir = "/srv/ccrc/data36/z3478332/WRF/output/ERAI_R"+r+"_nudging_default_2007_notopo/out/"
 
 fname="ECLrain_bymonth_0708_rad2_p100.nc"
 f1 = addfile(DATADir+fname,"r")
@@ -98,7 +98,7 @@ noECL_diff1a@units = "%"
 noECL_diff1a@lat2d=lat1
 noECL_diff1a@lon2d=lon1
 
-outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_ECL"
+outfile1=OUTDir+"D01_prlr_notopo_Rall_annanom_mean_ECL"
 
   wks = gsn_open_wks("pdf", outfile1)  ; Open graphics file
       gsn_define_colormap(wks,"precip_diff_12lev")      
@@ -108,7 +108,7 @@ outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_ECL"
   frame(wks)
   delete([/map,wks,outfile1/])
 
-outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_noECL"
+outfile1=OUTDir+"D01_prlr_notopo_Rall_annanom_mean_noECL"
 
   wks = gsn_open_wks("pdf", outfile1)  ; Open graphics file
       gsn_define_colormap(wks,"precip_diff_12lev")      
@@ -119,7 +119,7 @@ outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_noECL"
   delete([/map,wks,outfile1/])
 
 
-  outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_PCchange_ECL"
+  outfile1=OUTDir+"D01_prlr_notopo_Rall_annanom_mean_PCchange_ECL"
   res@cnLevelSelectionMode = "ExplicitLevels"
 
   delete(res@cnLevels)
@@ -135,7 +135,7 @@ res@cnFillColors         = (/3,4,5,6,8,10,11,12,13/)
   frame(wks)
   delete([/map,wks,outfile1/])
 
-  outfile1=OUTDir+"D01_prlr_noeac_BRAN_Rall_annanom_mean_PCchange_noECL"
+  outfile1=OUTDir+"D01_prlr_notopo_Rall_annanom_mean_PCchange_noECL"
   wks = gsn_open_wks("pdf", outfile1)  ; Open graphics file
       gsn_define_colormap(wks,"precip_diff_12lev")      
 

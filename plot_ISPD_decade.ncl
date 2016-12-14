@@ -12,8 +12,23 @@ begin
 
   arr = (/1870,1900,1910,1920,1930,1940,1950,1960/)
   labels = (/"Pre-1900","1900s","1910s","1920s","1930s","1940s","1950s"/)
-  color=(/15,16,17,18,19,20,1/)
+  color=(/16,17,18,19,20,21,1/)
   tness=(/0.007,0.007,0.007,0.007,0.007,0.007,0.007/)
+
+; Need new markers
+  ; markind=(/16,4,5,6,7,8,9/) Didn't work
+
+  mstrings = (/"7","u","u","u","u","z","y"/)     ; circle, 4xtriangle, star, sqaure
+  fontnums = (/34,34,34,34,34,35,35/)
+  yoffsets = 0.
+  sizes    = (/2.5,2.5, 2.5,2.5,2.5,2.5, 1.0/)
+  ratio    = 1.
+  angle    = (/0.,0.,90.,180.,270.,0.,0./)
+  xoffset  = 0.
+  ;markind = NhlNewMarker(wks, mstrings, fontnums, xoffset, yoffsets, ratio, sizes, angle)
+
+
+
 ;---------------------------
 
   filename="/srv/ccrc/data34/z3478332/20CR/ispd_history_v2.2.4.txt"
@@ -68,10 +83,10 @@ begin
   wks_type = "pdf"
   wks_type@wkPaperHeightF = 6.
   wks_type@wkPaperWidthF = 8.
-  wks = gsn_open_wks(wks_type,"/srv/ccrc/data34/z3478332/20CR/Figure1")     ; Open a workstation and
+  wks = gsn_open_wks(wks_type,"/srv/ccrc/data34/z3478332/20CR/Figure1_v2")     ; Open a workstation and
   gsn_define_colormap(wks,"prcp_3")      ; define a different colormap.
                 
-
+  markind = NhlNewMarker(wks, mstrings, fontnums, xoffset, yoffsets, ratio, sizes, angle)
 ;
 ; Set up some map resources.
 ;
@@ -130,6 +145,7 @@ resline2@gsLineDashPattern = 2
     if (.not.ismissing(lat_new(6-i,0)))
       gsres@gsMarkerColor      = color(6-i)
       gsres@gsMarkerSizeF = tness(6-i)
+      gsres@gsMarkerIndex = markind(6-i)
       gsn_polymarker(wks,map,lon_new(6-i,:),lat_new(6-i,:),gsres)
 ;
 ; Add marker and text for the legend.

@@ -7,7 +7,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 ECLDIR="/srv/ccrc/data34/z3478332/ECLtracks/outputUM_wrf_2007_all/typing/"
 OUTDIR="/srv/ccrc/data45/z3478332/WRF/output/"
 
-INDIRS=(/"/srv/ccrc/data36/z3478332/WRF/output/ERAI_R1_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R3_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R1_nudging_default_2007_notopo/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007_notopo/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R3_nudging_default_2007_notopo/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_2eac/out/"/)
+INDIRS=(/"/srv/ccrc/data36/z3478332/WRF/output/ERAI_R1_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R3_nudging_default_2007/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R1_nudging_default_2007_notopo/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R2_nudging_default_2007_notopo/out/","/srv/ccrc/data36/z3478332/WRF/output/ERAI_R3_nudging_default_2007_notopo/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data37/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_noeac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R1_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nudging_default_2007_BRAN_2eac/out/","/srv/ccrc/data45/z3478332/WRF/output/ERAI_R3_nudging_default_2007_BRAN_2eac/out/"/)
 
 names=(/"R1","R2","R3","R1_notopo","R2_notopo","R3_notopo","R1_BRAN","R2_BRAN","R3_BRAN","R1_BRAN_noeac","R2_BRAN_noeac","R3_BRAN_noeac","R1_BRAN_2eac","R2_BRAN_2eac","R3_BRAN_2eac"/)
 names2=(/"","","","","","","","","","","","","_v2","_v2","_v2"/)
@@ -26,16 +26,18 @@ do while(n.lt.dimsizes(INDIRS))
   INDIR=INDIRS(n)
 ;  OUTDIR=OUTDIRS(n)
   print(INDIR)
-  ECLrain=conform_dims((/200,325/),0.0,-1) 
-  ECLrain!0="south_north"
-  ECLrain!1="east_west"
-  ECLrain@description="Annual rain accummulation within 500km radius of low centre"
+  ECLrain=conform_dims((/4,200,325/),0.0,-1) 
+  ECLrain!1="south_north"
+  ECLrain!2="east_west"
+  ECLrain!0="threshold"
+  ECLrain&threshold=(/0,6,12,24/)
+  ECLrain@description="Number of hours with at least X mm/6hr accumulation within 500km radius of low centre"
 
   ECLrain_loc=ECLrain
-  ECLrain_loc@description="Annual rain accummulation within 500km radius of low centre, where w/in ECL domain"
+  ECLrain_loc@description="Number of hours with at least X mm/6hr accumulation within 500km radius of low centre, where w/in ECL domain"
 
   AllRain=ECLrain
-  AllRain@description="Annual rain accummulation"
+  AllRain@description="Number of hours with at least X mm/6hr accumulation"
 ; Get the ECL list
   
   filename = ECLDIR+"ECLfixes_d02_0708_"+names(n)+"_"+cat+names2(n)+"_typing.csv"
@@ -64,6 +66,10 @@ do while(n.lt.dimsizes(INDIRS))
   end do
   rain(numDAYS,:,:) = dim_sum_n_Wrap(var_in1((numDAYS*6-3):(numDAYS*6-1),:,:),0)
 
+  rain6=where(rain.ge.6,1,0)
+  rain12=where(rain.ge.12,1,0)
+  rain24=where(rain.ge.24,1,0)
+
   delete(tmp)
   tmp=stringtochar(times)
   len=dimsizes(times)-1
@@ -71,7 +77,10 @@ do while(n.lt.dimsizes(INDIRS))
   delete(len)
 
 ; Make total raifnall
-    AllRain=(/dim_sum_n_Wrap(rain,0)/)
+    AllRain(0,:,:)=(/dim_sum_n_Wrap(rain,0)/)
+    AllRain(1,:,:)=(/dim_sum_n_Wrap(rain6,0)/)
+    AllRain(2,:,:)=(/dim_sum_n_Wrap(rain12,0)/)
+    AllRain(3,:,:)=(/dim_sum_n_Wrap(rain24,0)/)
 
 ; Now, make the composites
 ; Need a better way to do the dates - so, need a date/time matrix
@@ -92,27 +101,33 @@ I=getind_latlon2d(lat1,lon1,lat,lon)
 
     do ix=0,dimsizes(J)-1
 ;     can't be anything smaller than 0 or greater than rightmost index
-;     remove cases where centre is at very edge of domain, as may mean centre is not in region at all.
     if(I(J(ix),0).gt.0.and.I(J(ix),0).lt.199.and.I(J(ix),1).gt.0.and.I(J(ix),1).lt.324.) then
       seq1=ispan(max((/0,I(J(ix),0)-50/)),min((/199,I(J(ix),0)+50/)),1)
       seq2=ispan(max((/0,I(J(ix),1)-50/)),min((/324,I(J(ix),1)+50/)),1)
 
       ECLmask(seq1,seq2)=1
-      if(loc(J(ix)).eq.1) then
-         ECLmask_loc(seq1,seq2)=1
-      end if
-      delete([/seq1,seq2/])
+     if(loc(J(ix)).eq.1) then
+       ECLmask_loc(seq1,seq2)=1
+     end if
+    delete([/seq1,seq2/])
     end if
     end do
 
-    ECLrain=ECLrain+rain(K,:,:)*ECLmask
-    ECLrain_loc=ECLrain_loc+rain(K,:,:)*ECLmask_loc
+    ECLrain(0,:,:)=ECLrain(0,:,:)+rain(K,:,:)*ECLmask
+    ECLrain_loc(0,:,:)=ECLrain_loc(0,:,:)+rain(K,:,:)*ECLmask_loc
+    ECLrain(1,:,:)=ECLrain(1,:,:)+rain6(K,:,:)*ECLmask
+    ECLrain_loc(1,:,:)=ECLrain_loc(1,:,:)+rain6(K,:,:)*ECLmask_loc
+    ECLrain(2,:,:)=ECLrain(2,:,:)+rain12(K,:,:)*ECLmask
+    ECLrain_loc(2,:,:)=ECLrain_loc(2,:,:)+rain12(K,:,:)*ECLmask_loc
+    ECLrain(3,:,:)=ECLrain(3,:,:)+rain24(K,:,:)*ECLmask
+    ECLrain_loc(3,:,:)=ECLrain_loc(3,:,:)+rain24(K,:,:)*ECLmask_loc
+
     delete([/J,K/])
   end do
 
 ; Finally, write me a netcdf file
 
-fout=OUTDIR+"ECLrain_0708_d02_"+names(n)+names3(n)+"_"+cat+"_v3.nc"
+fout=OUTDIR+"ECLrain_0708_extremes_d02_"+names(n)+names3(n)+"_"+cat+"_v3.nc"
 
 system("/bin/rm -f "+fout)
 out = addfile(fout,"c")

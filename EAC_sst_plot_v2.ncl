@@ -64,7 +64,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
 
   outfile1=OUTDir+"d01_EAC_average_ESB"
 
-  wks = gsn_open_wks("pdf", outfile1)  ; Open graphics file
+  wks = gsn_open_wks("png", outfile1)  ; Open graphics file
       gsn_define_colormap(wks,"WhiteYellowOrangeRed")      
 
   map = gsn_csm_contour_map(wks, diff, res)

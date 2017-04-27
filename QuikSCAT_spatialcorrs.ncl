@@ -1,0 +1,222 @@
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
+
+; Initialise
+OUTDIR="/srv/ccrc/data37/z3478332/ECL_evaluation/"
+year1=1990
+year2=2009
+time=0
+sources=(/"ERAI","MERRA","JRA55","MERRA2","CFSR"/)
+
+; QuikSCAT
+
+QDIR="/srv/ccrc/data40/z3444417/Data/QuikSCATM/global/"
+
+f1=addfile(QDIR+"U10/raw/analysis_19880101_v11l30flk.nc","r")
+lat1=f1->lat
+lon1=f1->lon
+
+IQ=ind(lat1.ge.-40.and.lat1.le.-25)
+JQ=ind(lon1.ge.152.and.lon1.le.160)
+lat1a=lat1(IQ)
+lon1a=lon1(JQ)
+
+; Set up the list of date/times
+
+dates=yyyymmdd_time(year1,year2,"integer")
+year=tointeger(floor(dates/10000.))
+month=tointeger(floor(mod(dates,10000.)/100.))
+day=tointeger(mod(dates,100.))
+
+; Set up the regridding
+
+Opt                = True
+Opt@SrcRegional    = True             ; These are necessary
+Opt@DstRegional    = True
+Opt@DstGridLat = lat1a
+Opt@DstGridLon = lon1a
+Opt@ForceOverwrite = True
+Opt@SrcFileName    = "src_uv.nc"
+Opt@DstFileName    = "dst_uv.nc"
+Opt@WgtFileName    = "wgt_uv.nc"
+Opt@DstGridType = "rectilinear"
+
+Opt2=True
+Opt2@DstGridType = "rectilinear"
+
+; Now, wanting to do a daily correlation
+; Just for 00Z
+
+; Reanalysis - set up the lats/lons
+
+do s=2,dimsizes(sources)-1
+
+source=sources(s)
+print(source)
+daycorrU=new((/dimsizes(dates),3/),"double")
+daycorrU(:,0)=dates
+daycorrV=daycorrU
+daycorrW=daycorrU
+
+if(source.eq."ERAI") then
+  DATADIR="/srv/ccrc/data40/z3444417/Data/ERAI/global/"
+  fin=addfile("/srv/ccrc/data40/z3444417/Data/ERAI/global/U10/raw/fullres/10U_6hrs_sfc_2002_10.nc","r")
+  lat2=fin->g0_lat_1
+  lon2=fin->g0_lon_2
+  delete(fin)
+end if
+
+if(source.eq."JRA55") then
+  DATADIR="/srv/ccrc/data41/z3444417/Data/JRA55/global/"
+  fin=addfile("/srv/ccrc/data41/z3444417/Data/JRA55/global/psl/raw/JRA55_psl_2005_3.nc","r")
+  lat2=fin->g4_lat_2
+  lon2=fin->g4_lon_3
+  delete(fin)
+end if
+
+if(source.eq."MERRA") then
+  DATADIR="/srv/ccrc/data30/z3444417/Data/MERRA/global/"
+  fin=addfile("/srv/ccrc/data30/z3444417/Data/MERRA/global/U10/raw/MERRA300.prod.assim.tavg1_2d_slv_Nx.20091231.SUB.nc","r")
+  lat2=fin->latitude
+  lon2=fin->longitude
+  delete(fin)
+end if
+
+if(source.eq."MERRA2") then
+  DATADIR="/srv/ccrc/data34/z3478332/MERRA2/v2/"
+  fin=addfile("/srv/ccrc/data34/z3478332/MERRA2/v2/MERRA2_300.tavg1_2d_slv_Nx.20091231.SUB.nc4","r")
+  lat2=fin->lat
+  lon2=fin->lon
+  delete(fin)
+end if
+
+if(source.eq."CFSR") then
+  DATADIR="/srv/ccrc/data28/z3444417/Data/CFSR/global/UV10/raw/"
+  fin=addfile("/srv/ccrc/data28/z3444417/Data/CFSR/global/UV10/raw/CFSR_wnd10m_198001.nc","r")
+  lat2=fin->latitude
+  lon2=fin->longitude
+  delete(fin)
+end if
+
+do ip=0,dimsizes(dates)-1
+; Get QuikSCAT
+      FILE1=addfile(QDIR+"U10/raw/analysis_"+dates(ip)+"_v11l30flk.nc","r")
+      FILE2=addfile(QDIR+"V10/raw/analysis_"+dates(ip)+"_v11l30flk.nc","r")
+
+      qu=short2flt(FILE1->uwnd(time,IQ,JQ))
+      qv=short2flt(FILE2->vwnd(time,IQ,JQ))  
+      delete([/FILE1,FILE2/])
+
+; Get reanalysis
+      if(source.eq."ERAI") then
+       FILE1=addfile(DATADIR+"U10/raw/fullres/10U_6hrs_sfc_"+year(ip)+"_"+sprinti("%2.2i",month(ip))+".nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/fullres/10V_6hrs_sfc_"+year(ip)+"_"+sprinti("%2.2i",month(ip))+".nc","r")
+
+       n=(day(ip)-1)*4+time
+       u=short2flt(FILE1->10U_GDS0_SFC(n,:,:))
+       v=short2flt(FILE2->10V_GDS0_SFC(n,:,:))
+       delete([/FILE1,FILE2/])
+      end if
+
+      if(source.eq."CFSR") then
+       FILE1=addfile(DATADIR+"CFSR_wnd10m_"+year(ip)+sprinti("%2.2i",month(ip))+".nc","r")
+       n=(day(ip)-1)*24+time
+       u=FILE1->UGRD_10maboveground(n,:,:)
+       v=FILE1->VGRD_10maboveground(n,:,:)
+       delete([/FILE1/])
+      end if
+
+      if(source.eq."JRA55") then
+       mnum=floor((month(ip)-1)/3)
+       FILE1=addfile(DATADIR+"U10/raw/JRA55_U10_"+year(ip)+"_"+mnum+".nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/JRA55_V10_"+year(ip)+"_"+mnum+".nc","r")
+
+       time2=FILE1->initial_time0_encoded
+       n=ind(time2.eq.dates(ip)*100+time)
+
+       u=FILE1->UGRD_GDS4_HTGL(n-1,1,:,:)
+       v=FILE2->VGRD_GDS4_HTGL(n-1,1,:,:)
+       delete([/FILE1,FILE2,time2/])
+      end if
+
+      if(source.eq."MERRA") then
+        if(year(ip).le.1992) then
+         mnum=100
+        else if(year(ip).le.2000) then
+         mnum=200
+        else
+         mnum=300
+        end if
+        end if 
+
+       FILE1=addfile(DATADIR+"U10/raw/MERRA"+mnum+".prod.assim.tavg1_2d_slv_Nx."+dates(ip)+".SUB.nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/MERRA"+mnum+".prod.assim.tavg1_2d_slv_Nx."+dates(ip)+".SUB.nc","r")
+       u=FILE1->u10m(time,:,:)
+       v=FILE2->v10m(time,:,:)
+       delete([/FILE1,FILE2/])
+      end if
+
+     if(source.eq."MERRA2") then
+      if(year(ip).le.1991) then
+         mnum=100
+      else if(year(ip).le.2000) then
+         mnum=200
+      else
+         mnum=300
+      end if
+      end if
+ 
+      FILE1=addfile(DATADIR+"MERRA2_"+mnum+".tavg1_2d_slv_Nx."+dates(ip)+".SUB.nc4","r")
+      u=FILE1->U10M(time,:,:)
+      v=FILE1->V10M(time,:,:)
+      delete([/FILE1/])
+     end if
+
+
+; Regrid reanalysis
+
+  qw=(qu^2+qv^2)^0.5
+  w=(u^2+v^2)^0.5
+
+
+  if(ip.eq.0) then
+    u2 = ESMF_regrid(u,Opt)   ; Do the regridding - 0.5 degrees
+  else
+    u2= ESMF_regrid_with_weights(u,"wgt_uv.nc",Opt2)
+  end if
+  v2= ESMF_regrid_with_weights(v,"wgt_uv.nc",Opt2)
+  w2= ESMF_regrid_with_weights(w,"wgt_uv.nc",Opt2)
+
+; Calculate correlations
+
+  daycorrU(ip,1)=pattern_cor(qu,u2,1.0,1)
+  daycorrV(ip,1)=pattern_cor(qv,v2,1.0,1)
+  daycorrW(ip,1)=pattern_cor(qw,w2,1.0,1)
+
+; What about RMS difference?
+  daycorrU(ip,2)=avg((u2-qu)^2)^0.5
+  daycorrV(ip,2)=avg((v2-qv)^2)^0.5
+  daycorrW(ip,2)=avg((w2-qw)^2)^0.5
+
+end do   
+
+; Finally, writing out 
+
+optf=True
+optf@title  = "Date       Corr   RMSE"
+optf@fout=OUTDIR+"QuikSCAT_daily00Z_Ucorr_"+source+".dat"
+write_matrix (daycorrU, "f10.0,2f7.3", optf)
+optf@fout=OUTDIR+"QuikSCAT_daily00Z_Vcorr_"+source+".dat"
+write_matrix (daycorrV, "f10.0,2f7.3", optf)
+optf@fout=OUTDIR+"QuikSCAT_daily00Z_Wcorr_"+source+".dat"
+write_matrix (daycorrW, "f10.0,2f7.3", optf)
+
+delete([/lat2,lon2,u,v,w,u2,v2,w2,qu,qv,qw,daycorrU,daycorrV,daycorrW/])
+
+end do
+
+
+

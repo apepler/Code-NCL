@@ -7,13 +7,14 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
 ECLDIR="/srv/ccrc/data34/z3478332/ECLtracks/outputUM_"
 
 ;INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/impact/"/)
-INDIRS=(/"/srv/ccrc/data34/z3478332/WRF/ERA-nudge/"/)
-
+;INDIRS=(/"/srv/ccrc/data34/z3478332/WRF/ERA-nudge/"/)
+INDIRS=(/"/srv/ccrc/data45/z3478332/WRF/output/ERAI_R2_nonudging_notopo/out/impact/","/srv/ccrc/data34/z3478332/WRF/ERA-nonudge/"/)
 OUTDIRS=INDIRS
 
-names=(/"ERA-nudge"/)
-cat="p100_rad2cv1_2"
-cat2="d02_rad2_p100_cv1.0"
+
+names=(/"ERA-nonudge_notopo","ERA-nonudge"/)
+cat="p240_rad2cv1"
+cat2="d02_rad2_p240_cv1.0"
 
 fin=addfile("WRF_d02_ESB_mask.nc","r")
 ESB_d02=fin->ESB
@@ -94,7 +95,7 @@ do while(n.lt.dimsizes(INDIRS))
 
      rain=wrf_user_getvar(f1,"rain",J)
      ECLrain(ip,seq1b,seq2b)=rain(seq1a,seq2a)
-     u=wrf_user_getvar(f2,"u10",J)
+     u=wrf_user_getvar(f2,"u10",J)  
      ECL_U10(ip,seq1b,seq2b)=u(seq1a,seq2a)
      v=wrf_user_getvar(f2,"v10",J)
      ECL_V10(ip,seq1b,seq2b)=v(seq1a,seq2a)
@@ -111,13 +112,13 @@ ECL_WS10@description="6-hour instantaneous 10m meridional wind within 500km radi
 
 ; Finally, write me a netcdf file
 
-fout=OUTDIRS(n)+"ECLrain_"+names(n)+"_"+cat2+"_centred_2.nc"
+fout=OUTDIRS(n)+"ECLrain_"+names(n)+"_"+cat2+"_centred.nc"
 system("/bin/rm -f "+fout)
 out = addfile(fout,"c")
 out->ECLrain=ECLrain
 delete([/fout,out/])
 
-fout=OUTDIRS(n)+"ECLwind_"+names(n)+"_"+cat2+"_2.nc"
+fout=OUTDIRS(n)+"ECLwind_"+names(n)+"_"+cat2+".nc"
 system("/bin/rm -f "+fout)
 out = addfile(fout,"c")
 out->ECL_U10=ECL_U10

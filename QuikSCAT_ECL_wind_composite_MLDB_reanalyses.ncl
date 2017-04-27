@@ -1,0 +1,219 @@
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/esmf/ESMF_regridding.ncl"
+
+OUTDIR="/srv/ccrc/data37/z3478332/ECL_evaluation/"
+syear=1988
+sources=(/"ERAI","MERRA","JRA55","MERRA2","CFSR"/)
+
+; QuikSCAT latitudes & indices
+
+QDIR="/srv/ccrc/data40/z3444417/Data/QuikSCATM/global/"
+
+f1=addfile(QDIR+"U10/raw/analysis_19880101_v11l30flk.nc","r")
+lat1=f1->lat
+lon1=f1->lon
+
+IQ=ind(lat1.ge.-55.and.lat1.le.-15.)
+JQ=ind(lon1.ge.135.and.lon1.le.175.)
+lat1a=lat1(IQ)
+lon1a=lon1(JQ)
+
+; Set up the regridding
+
+Opt                = True
+Opt@SrcRegional    = True             ; These are necessary
+Opt@DstRegional    = True
+Opt@DstGridLat = lat1a
+Opt@DstGridLon = lon1a
+Opt@ForceOverwrite = True
+Opt@SrcFileName    = "src_uv.nc"
+Opt@DstFileName    = "dst_uv.nc"
+Opt@WgtFileName    = "wgt_uv.nc"
+Opt@DstGridType = "rectilinear"
+
+Opt2=True
+Opt2@DstGridType = "rectilinear"
+
+; This is the dimensions of the output grid
+  lon0=fspan(-9.875,9.875,80)
+  lon0!0="lon"
+  lon0@units="degrees_E"
+  lat0=fspan(-9.875,9.875,80)
+  lat0!0="lat"
+  lat0@units="degrees_N"
+
+  filename = OUTDIR+"MLDB_QC_19882008.csv"
+  read_data= asciiread(filename,-1,"string")
+  header    = read_data(0)        ; Header. Use for variable names.
+  data      = read_data(1:)       ; Get rid of first line which is a header.
+  date1 = tointeger(str_get_field(data,3,","))
+  I=ind(date1.ge.syear*10000)
+  date = tointeger(str_get_field(data(I),3,","))
+  time = tointeger(str_get_field(data(I),4,","))
+  time=time/6
+  lat = tofloat(str_get_field(data(I),6,","))
+  lon= tofloat(str_get_field(data(I),5,","))
+  len=dimsizes(date)  
+  year=floor(date/10000.)
+  month=tointeger(mod(floor(date/100.),100))
+  day=mod(date,100)
+
+  I=ind_nearest_coord(lat,lat1a,0)
+  J=ind_nearest_coord(lon,lon1a,0)
+
+; Now, loop over the different sources
+
+
+do s=3,dimsizes(sources)-1
+
+source=sources(s)
+print(source)
+
+  ECL_U10=new((/dimsizes(date),dimsizes(lat0),dimsizes(lon0)/),"float")
+  ECL_U10!0="Time"
+  ECL_U10!1="lat"
+  ECL_U10!2="lon"
+  ECL_V10=ECL_U10
+  ECL_U10@description="6-hour instantaneous 10m zonal wind within 1000km radius of low centre"
+  ECL_V10@description="6-hour instantaneous 10m meridional wind within 1000km radius of low centre"
+
+if(source.eq."ERAI") then
+  DATADIR="/srv/ccrc/data40/z3444417/Data/ERAI/global/"
+  fin=addfile("/srv/ccrc/data40/z3444417/Data/ERAI/global/U10/raw/fullres/10U_6hrs_sfc_2002_10.nc","r")
+  lat2=fin->g0_lat_1
+  lon2=fin->g0_lon_2
+  delete(fin)
+end if
+
+if(source.eq."JRA55") then
+  DATADIR="/srv/ccrc/data41/z3444417/Data/JRA55/global/"
+  fin=addfile("/srv/ccrc/data41/z3444417/Data/JRA55/global/psl/raw/JRA55_psl_2005_3.nc","r")
+  lat2=fin->g4_lat_2
+  lon2=fin->g4_lon_3
+  delete(fin)
+end if
+
+if(source.eq."MERRA") then
+  DATADIR="/srv/ccrc/data30/z3444417/Data/MERRA/global/"
+  fin=addfile("/srv/ccrc/data30/z3444417/Data/MERRA/global/U10/raw/MERRA300.prod.assim.tavg1_2d_slv_Nx.20091231.SUB.nc","r")
+  lat2=fin->latitude
+  lon2=fin->longitude
+  delete(fin)
+end if
+
+if(source.eq."MERRA2") then
+  DATADIR="/srv/ccrc/data34/z3478332/MERRA2/v2/"
+  fin=addfile("/srv/ccrc/data34/z3478332/MERRA2/v2/MERRA2_300.tavg1_2d_slv_Nx.20091231.SUB.nc4","r")
+  lat2=fin->lat
+  lon2=fin->lon
+  delete(fin)
+end if
+
+if(source.eq."CFSR") then
+  DATADIR="/srv/ccrc/data28/z3444417/Data/CFSR/global/UV10/raw/"
+  fin=addfile("/srv/ccrc/data28/z3444417/Data/CFSR/global/UV10/raw/CFSR_wnd10m_198001.nc","r")
+  lat2=fin->latitude
+  lon2=fin->longitude
+  delete(fin)
+end if
+
+do ip=0,dimsizes(date)-1
+; Get reanalysis
+      if(source.eq."ERAI") then
+       FILE1=addfile(DATADIR+"U10/raw/fullres/10U_6hrs_sfc_"+year(ip)+"_"+sprinti("%2.2i",month(ip))+".nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/fullres/10V_6hrs_sfc_"+year(ip)+"_"+sprinti("%2.2i",month(ip))+".nc","r")
+
+       n=(day(ip)-1)*4+(time(ip)/6)
+       u=short2flt(FILE1->10U_GDS0_SFC(n,:,:))
+       v=short2flt(FILE2->10V_GDS0_SFC(n,:,:))
+       delete([/FILE1,FILE2/])
+      end if
+
+      if(source.eq."CFSR") then
+       FILE1=addfile(DATADIR+"CFSR_wnd10m_"+year(ip)+sprinti("%2.2i",month(ip))+".nc","r")
+       n=(day(ip)-1)*24+time(ip)
+       u=FILE1->UGRD_10maboveground(n,:,:)
+       v=FILE1->VGRD_10maboveground(n,:,:)
+       delete([/FILE1/])
+      end if
+
+      if(source.eq."JRA55") then
+       mnum=floor((month(ip)-1)/3)
+       FILE1=addfile(DATADIR+"U10/raw/JRA55_U10_"+year(ip)+"_"+mnum+".nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/JRA55_V10_"+year(ip)+"_"+mnum+".nc","r")
+
+       time2=FILE1->initial_time0_encoded
+       n=ind(time2.eq.date(ip)*100+time(ip))
+
+       u=FILE1->UGRD_GDS4_HTGL(n-1,1,:,:)
+       v=FILE2->VGRD_GDS4_HTGL(n-1,1,:,:)
+       delete([/FILE1,FILE2,time2/])
+      end if
+
+      if(source.eq."MERRA") then
+        if(year(ip).le.1992) then
+         mnum=100
+        else if(year(ip).le.2000) then
+         mnum=200
+        else
+         mnum=300
+        end if
+        end if 
+
+       FILE1=addfile(DATADIR+"U10/raw/MERRA"+mnum+".prod.assim.tavg1_2d_slv_Nx."+date(ip)+".SUB.nc","r")
+       FILE2=addfile(DATADIR+"V10/raw/MERRA"+mnum+".prod.assim.tavg1_2d_slv_Nx."+date(ip)+".SUB.nc","r")
+       u=FILE1->u10m(time(ip),:,:)
+       v=FILE2->v10m(time(ip),:,:)
+       delete([/FILE1,FILE2/])
+      end if
+
+     if(source.eq."MERRA2") then
+      if(year(ip).le.1991) then
+         mnum=100
+      else if(year(ip).le.2000) then
+         mnum=200
+      else
+         mnum=300
+      end if
+      end if
+ 
+      FILE1=addfile(DATADIR+"MERRA2_"+mnum+".tavg1_2d_slv_Nx."+date(ip)+".SUB.nc4","r")
+      u=FILE1->U10M(time(ip),:,:)
+      v=FILE1->V10M(time(ip),:,:)
+      delete([/FILE1/])
+     end if
+
+; Regrid reanalysis
+
+  if(ip.eq.0) then
+    u2 = ESMF_regrid(u,Opt)   ; Do the regridding - 0.5 degrees
+  else
+    u2= ESMF_regrid_with_weights(u,"wgt_uv.nc",Opt2)
+  end if
+  v2= ESMF_regrid_with_weights(v,"wgt_uv.nc",Opt2)
+
+  ECL_U10(ip,:,:)=u2((I(ip)-39):(I(ip)+40),(J(ip)-39):(J(ip)+40))
+  ECL_V10(ip,:,:)=v2((I(ip)-39):(I(ip)+40),(J(ip)-39):(J(ip)+40))
+
+  end do
+
+; Finally, write me a netcdf file
+ECL_WS10=(ECL_U10^2+ECL_V10^2)^0.5
+print(max(ECL_WS10))
+copy_VarMeta(ECL_U10,ECL_WS10)
+ECL_WS10@description="6-hour instantaneous wind speed within 500km radius of low centre"
+
+fout=OUTDIR+"ECLwind_QuikSCAT_MLDBQC_"+source+".nc"
+system("/bin/rm -f "+fout)
+out = addfile(fout,"c")
+out->ECL_U10=ECL_U10
+out->ECL_V10=ECL_V10
+out->ECL_WS10=ECL_WS10
+
+delete([/u,v,u2,v2,ECL_U10,ECL_V10,ECL_WS10/])
+delete([/fout,out,lat2,lon2/])
+
+end do

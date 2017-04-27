@@ -1,0 +1,82 @@
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
+;load "./WRFUserARW.ncl"
+
+QDIR="/srv/ccrc/data40/z3444417/Data/QuikSCATM/global/"
+OUTDIR="/srv/ccrc/data37/z3478332/ECL_evaluation/"
+sources=(/"QuikSCAT","ERAI","MERRA","JRA55","CFSR"/)
+
+years=ispan(1990,2009,1)
+
+f1=addfile(QDIR+"U10/raw/analysis_19880101_v11l30flk.nc","r")
+lat1=f1->lat
+lon1=f1->lon
+IQ=ind(lat1.ge.-60.and.lat1.le.0.)
+JQ=ind(lon1.ge.100.and.lon1.le.180.)
+lat1a=lat1(IQ)
+lat1a@units="degrees_north"
+lon1a=lon1(JQ)
+lon1a@units="degrees_east"
+
+s=4
+f1=addfile(OUTDIR+"wind_annual_"+sources(0)+".nc","r")
+u1=f1->uwnd
+v1=f1->vwnd
+f2=addfile(OUTDIR+"wind_annual_"+sources(s)+".nc","r")
+u2=f2->uwnd
+v2=f2->vwnd
+u=dim_avg_n_Wrap(u2-u1,0)
+v=dim_avg_n_Wrap(v2-v1,0)
+u!0="Lat"
+u!1="Lon"
+v!0="Lat"
+v!1="Lon"
+u&Lat=lat1a
+u&Lon=lon1a
+v&Lat=lat1a
+v&Lon=lon1a
+
+  vcres                         = True             ; plot mods desired
+   vcres@mpFillOn = False
+   vcres@mpDataBaseVersion     = "MediumRes"          ; Default is Lowres
+   vcres@mpOutlineDrawOrder    = "PostDraw"           ; Draw map outlines last
+   vcres@gsnDraw         = False
+   vcres@gsnFrame        = False
+  vcres@vcRefLengthF            = 0.05            ; define length of vec ref
+  vcres@vcGlyphStyle            = "CurlyVector"    ; turn on curly vectors
+  vcres@vcRefMagnitudeF           = 1.0             ; define vector ref mag
+  vcres@tiMainFontHeightF = 0.02
+  vcres@vcRefAnnoString1 = "$VMG$ m/s"
+  vcres@vcRefAnnoOrthogonalPosF = -1.0   ; move ref vector into plot
+   vcres@mpGridLineDashPattern = 2 ; lat/lon lines as dashed
+   vcres@mpGridAndLimbOn = False
+   vcres@mpGridSpacingF = 10.
+   vcres@mpGeophysicalLineThicknessF = 2.0 
+   vcres@mpMinLonF = 100
+vcres@gsnAddCyclic=False
+vcres@mpMaxLonF = 180
+vcres@mpMinLatF = -60
+vcres@mpMaxLatF = 0
+vcres@mpGridLineThicknessF = 0.5
+  vcres@gsnLeftString = ""
+  vcres@gsnRightString = ""
+  vcres@vcMinDistanceF          = 0.03 ;0.017
+  vcres@vcVectorDrawOrder         = "PostDraw"
+     vcres@gsnDraw         = False
+     vcres@gsnFrame        = False
+  vcres@vcLineArrowThicknessF = 1.5
+  vcres@vcRefAnnoString2On = False
+
+wks = gsn_open_wks("pdf",OUTDIR+"wind_mean_"+sources(s)+"_vQuikSCAT")
+vcres@tiMainString = "Mean 10m winds" 
+    wind = gsn_csm_vector_map(wks,u,v,vcres)
+
+resline2 = True
+resline2@gsLineColor = "blue"
+resline2@gsLineThicknessF = 4.0
+resline2@gsLineDashPattern = 2
+
+dum2=gsn_add_polyline(wks,wind,(/149,161,161,152,152,149,149/),(/-41,-41,-24,-24,-31,-37,-41/),resline2)
+    draw(wind)
+    frame(wks)
